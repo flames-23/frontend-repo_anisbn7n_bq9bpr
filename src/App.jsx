@@ -1,6 +1,18 @@
-import { useMemo } from 'react'
-import { motion } from 'framer-motion'
+import { useMemo, useRef } from 'react'
+import { motion, useMotionValue, useSpring, useTransform, useScroll } from 'framer-motion'
 import { ArrowRight, Github, Linkedin, Mail } from 'lucide-react'
+
+// Scroll progress bar
+function ScrollProgress() {
+  const { scrollYProgress } = useScroll()
+  const scaleX = useSpring(scrollYProgress, { stiffness: 120, damping: 20, mass: 0.2 })
+  return (
+    <motion.div
+      style={{ scaleX }}
+      className="fixed top-0 left-0 right-0 h-0.5 origin-left bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 z-[60]"
+    />
+  )
+}
 
 // Small UI helpers
 function Pill({ children }) {
@@ -50,6 +62,26 @@ function SectionHeading({ id, eyebrow, title, subtitle }) {
 }
 
 function ProjectCard({ title, description, tags, link, image, i }) {
+  const ref = useRef(null)
+  const x = useMotionValue(0)
+  const y = useMotionValue(0)
+  const rotateX = useTransform(y, [-50, 50], [8, -8])
+  const rotateY = useTransform(x, [-50, 50], [-8, 8])
+
+  const handleMouseMove = (e) => {
+    const rect = ref.current?.getBoundingClientRect()
+    if (!rect) return
+    const dx = e.clientX - (rect.left + rect.width / 2)
+    const dy = e.clientY - (rect.top + rect.height / 2)
+    x.set(Math.max(-50, Math.min(50, dx / 4)))
+    y.set(Math.max(-50, Math.min(50, dy / 4)))
+  }
+
+  const handleMouseLeave = () => {
+    x.set(0)
+    y.set(0)
+  }
+
   return (
     <motion.a
       initial={{ opacity: 0, y: 12 }}
@@ -59,21 +91,25 @@ function ProjectCard({ title, description, tags, link, image, i }) {
       href={link}
       target="_blank"
       rel="noreferrer"
-      className="group block overflow-hidden rounded-xl ring-1 ring-black/5 bg-white/70 hover:bg-white/90 transition shadow-sm hover:shadow-lg will-change-transform"
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{ rotateX, rotateY, transformStyle: 'preserve-3d' }}
+      className="group block overflow-hidden rounded-xl ring-1 ring-black/5 bg-white/70 hover:bg-white/90 transition shadow-sm hover:shadow-xl will-change-transform perspective-1000"
     >
-      <div className="relative aspect-video w-full overflow-hidden">
+      <div className="relative aspect-video w-full overflow-hidden" style={{ transform: 'translateZ(20px)' }}>
         <div className="absolute inset-0 bg-gradient-to-br from-slate-100 via-white to-slate-200" />
         <motion.div
-          className="absolute -inset-8 opacity-0 group-hover:opacity-20 blur-2xl bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400"
+          className="absolute -inset-8 opacity-0 group-hover:opacity-30 blur-2xl bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400"
           initial={false}
-          animate={{ opacity: [0, 0.2, 0] }}
+          animate={{ opacity: [0, 0.3, 0] }}
           transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
         />
         {image && (
           <img src={image} alt={title} className="absolute inset-0 w-full h-full object-cover" />
         )}
       </div>
-      <div className="p-4">
+      <div className="p-4" style={{ transform: 'translateZ(30px)' }}>
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition">
             {title}
@@ -88,6 +124,27 @@ function ProjectCard({ title, description, tags, link, image, i }) {
         </div>
       </div>
     </motion.a>
+  )
+}
+
+function FloatingOrbs() {
+  const orbs = [
+    { size: 'w-72 h-72', color: 'from-blue-300/40 to-purple-300/40', top: '10%', left: '5%', duration: 18 },
+    { size: 'w-64 h-64', color: 'from-pink-300/40 to-orange-300/40', top: '70%', left: '10%', duration: 22 },
+    { size: 'w-80 h-80', color: 'from-sky-300/40 to-indigo-300/40', top: '30%', left: '70%', duration: 20 },
+  ]
+  return (
+    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+      {orbs.map((o, idx) => (
+        <motion.div
+          key={idx}
+          className={`absolute ${o.size} blur-3xl rounded-full bg-gradient-to-br ${o.color}`}
+          style={{ top: o.top, left: o.left }}
+          animate={{ x: [0, 30, -20, 0], y: [0, -25, 20, 0] }}
+          transition={{ duration: o.duration, repeat: Infinity, ease: 'easeInOut', delay: idx * 1.5 }}
+        />
+      ))}
+    </div>
   )
 }
 
@@ -129,9 +186,30 @@ export default function App() {
     'UI/UX',
   ]
 
+  // Hero parallax
+  const heroRef = useRef(null)
+  const mx = useMotionValue(0)
+  const my = useMotionValue(0)
+  const tiltX = useTransform(my, [-30, 30], [6, -6])
+  const tiltY = useTransform(mx, [-30, 30], [-6, 6])
+
+  const onHeroMove = (e) => {
+    const rect = heroRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const dx = e.clientX - (rect.left + rect.width / 2)
+    const dy = e.clientY - (rect.top + rect.height / 2)
+    mx.set(Math.max(-30, Math.min(30, dx / 8)))
+    my.set(Math.max(-30, Math.min(30, dy / 8)))
+  }
+
+  const words = 'Website Modern dengan Animasi Halus dan Gradasi Elegan'.split(' ')
+
   return (
     <div className="relative min-h-screen overflow-x-clip text-gray-900">
-      {/* Animated gradient background */}
+      <ScrollProgress />
+      <FloatingOrbs />
+
+      {/* Animated gradient base */}
       <motion.div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10"
@@ -139,13 +217,8 @@ export default function App() {
         animate={{ opacity: 1 }}
         transition={{ duration: 1 }}
       >
-        <div className="absolute -top-32 -left-24 w-[36rem] h-[36rem] rounded-full blur-3xl bg-gradient-to-br from-blue-300/50 via-purple-300/40 to-pink-300/40" />
-        <div className="absolute -bottom-32 -right-24 w-[36rem] h-[36rem] rounded-full blur-3xl bg-gradient-to-tr from-sky-200/50 via-white to-indigo-200/40" />
-        <motion.div
-          className="absolute top-1/4 left-1/3 w-96 h-96 rounded-full blur-3xl bg-gradient-to-br from-blue-400/20 via-purple-300/20 to-pink-300/20"
-          animate={{ x: [0, 40, -20, 0], y: [0, -20, 30, 0] }}
-          transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
-        />
+        <div className="absolute -top-32 -left-24 w-[36rem] h-[36rem] rounded-full blur-3xl bg-gradient-to-br from-blue-300/40 via-purple-300/30 to-pink-300/30" />
+        <div className="absolute -bottom-32 -right-24 w-[36rem] h-[36rem] rounded-full blur-3xl bg-gradient-to-tr from-sky-200/40 via-white to-indigo-200/30" />
       </motion.div>
 
       {/* Navbar */}
@@ -159,9 +232,9 @@ export default function App() {
             <a href="#contact" className="text-sm text-gray-600 hover:text-gray-900">Kontak</a>
           </nav>
           <div className="flex items-center gap-2">
-            <a href="#contact" className="text-sm font-medium px-3 py-1.5 rounded-md bg-gray-900 text-white hover:bg-black">
+            <motion.a whileHover={{ y: -1 }} whileTap={{ y: 0 }} href="#contact" className="text-sm font-medium px-3 py-1.5 rounded-md bg-gray-900 text-white hover:bg-black">
               Hubungi
-            </a>
+            </motion.a>
           </div>
         </div>
       </header>
@@ -175,37 +248,54 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7 }}
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium ring-1 ring-blue-300/50">
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium ring-1 ring-blue-300/50">
                 Tersedia untuk proyek freelance
-              </div>
+              </motion.div>
               <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mt-4">
-                Website Modern dengan Animasi Halus dan Gradasi Elegan
+                {words.map((w, i) => (
+                  <motion.span
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 + i * 0.04, duration: 0.5 }}
+                    className="inline-block mr-2 bg-clip-text text-transparent bg-[linear-gradient(90deg,#0ea5e9,#8b5cf6,#ec4899)] bg-[length:200%_100%]"
+                    style={{ backgroundPositionX: `${(i % 10) * 10}%` }}
+                  >
+                    {w}
+                  </motion.span>
+                ))}
               </h1>
-              <p className="mt-4 text-gray-600 leading-relaxed">
+              <motion.p className="mt-4 text-gray-600 leading-relaxed" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
                 Saya membangun antarmuka yang cepat, rapi, dan menyenangkan dengan fokus pada performa dan pengalaman pengguna.
-              </p>
+              </motion.p>
               <div className="mt-6 flex items-center gap-3">
-                <a href="#projects" className="px-4 py-2 rounded-md bg-gray-900 text-white text-sm font-medium hover:bg-black inline-flex items-center gap-2">
+                <motion.a whileHover={{ y: -2 }} whileTap={{ y: 0 }} href="#projects" className="px-4 py-2 rounded-md bg-gray-900 text-white text-sm font-medium hover:bg-black inline-flex items-center gap-2">
                   Lihat Proyek <ArrowRight className="w-4 h-4" />
-                </a>
-                <a href="#contact" className="px-4 py-2 rounded-md bg-white text-gray-900 text-sm font-medium ring-1 ring-black/10 hover:bg-gray-50">
+                </motion.a>
+                <motion.a whileHover={{ y: -2 }} whileTap={{ y: 0 }} href="#contact" className="px-4 py-2 rounded-md bg-white text-gray-900 text-sm font-medium ring-1 ring-black/10 hover:bg-gray-50">
                   Kontak
-                </a>
+                </motion.a>
               </div>
               <div className="mt-6 flex items-center gap-3 text-gray-600">
-                <a href="#" className="inline-flex items-center gap-2 hover:text-gray-900"><Github className="w-4 h-4" /> Github</a>
-                <a href="#" className="inline-flex items-center gap-2 hover:text-gray-900"><Linkedin className="w-4 h-4" /> LinkedIn</a>
-                <a href="#contact" className="inline-flex items-center gap-2 hover:text-gray-900"><Mail className="w-4 h-4" /> Email</a>
+                <motion.a whileHover={{ y: -2 }} href="#" className="inline-flex items-center gap-2 hover:text-gray-900"><Github className="w-4 h-4" /> Github</motion.a>
+                <motion.a whileHover={{ y: -2 }} href="#" className="inline-flex items-center gap-2 hover:text-gray-900"><Linkedin className="w-4 h-4" /> LinkedIn</motion.a>
+                <motion.a whileHover={{ y: -2 }} href="#contact" className="inline-flex items-center gap-2 hover:text-gray-900"><Mail className="w-4 h-4" /> Email</motion.a>
               </div>
             </motion.div>
 
             <motion.div
+              ref={heroRef}
+              onMouseMove={onHeroMove}
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.7, delay: 0.1 }}
               className="relative"
+              style={{ transformStyle: 'preserve-3d', perspective: 1000 }}
             >
-              <div className="aspect-square rounded-2xl bg-gradient-to-br from-indigo-200 via-white to-purple-200 ring-1 ring-black/5 flex items-center justify-center">
+              <motion.div
+                className="aspect-square rounded-2xl bg-gradient-to-br from-indigo-200 via-white to-purple-200 ring-1 ring-black/5 flex items-center justify-center"
+                style={{ rotateX: tiltX, rotateY: tiltY }}
+              >
                 <motion.div
                   className="mx-auto w-24 h-24 rounded-full bg-white/70 ring-1 ring-black/5 flex items-center justify-center text-2xl font-bold text-blue-700"
                   animate={{ rotate: [0, 3, -3, 0] }}
@@ -213,7 +303,12 @@ export default function App() {
                 >
                   FB
                 </motion.div>
-              </div>
+                <motion.div
+                  className="absolute -inset-10 blur-3xl rounded-full bg-gradient-to-r from-blue-400/20 via-purple-400/20 to-pink-400/20"
+                  animate={{ opacity: [0.2, 0.4, 0.2] }}
+                  transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              </motion.div>
             </motion.div>
           </div>
         </div>
@@ -247,11 +342,19 @@ export default function App() {
             title="Proyek Pilihan"
             subtitle="Memadukan kualitas desain, kerapian kode, dan pengalaman pengguna."
           />
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <motion.div
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.3 }}
+            variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
             {projects.map((p, i) => (
-              <ProjectCard key={p.title} {...p} i={i} />
+              <motion.div key={p.title} variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } }}>
+                <ProjectCard {...p} i={i} />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -268,16 +371,24 @@ export default function App() {
             whileInView="show"
             viewport={{ once: true, amount: 0.5 }}
             variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
-            className="flex flex-wrap items-center justify-center gap-3"
+            className="relative"
           >
-            {skills.map((s) => (
+            <div className="overflow-hidden">
               <motion.div
-                key={s}
-                variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}
+                className="flex gap-3 will-change-transform"
+                animate={{ x: ['0%', '-50%'] }}
+                transition={{ duration: 16, repeat: Infinity, ease: 'linear' }}
               >
-                <Pill>{s}</Pill>
+                {[...skills, ...skills].map((s, idx) => (
+                  <motion.div
+                    key={idx}
+                    variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}
+                  >
+                    <Pill>{s}</Pill>
+                  </motion.div>
+                ))}
               </motion.div>
-            ))}
+            </div>
           </motion.div>
         </div>
       </section>
@@ -297,14 +408,20 @@ export default function App() {
             transition={{ duration: 0.6 }}
             className="max-w-xl mx-auto"
           >
-            <div className="rounded-xl bg-white/80 ring-1 ring-black/5 p-5">
-              <form action="mailto:you@example.com" method="post" className="grid gap-4">
+            <div className="rounded-xl bg-white/80 ring-1 ring-black/5 p-5 relative overflow-hidden">
+              <motion.div
+                aria-hidden
+                className="absolute -inset-20 blur-3xl bg-gradient-to-br from-blue-400/10 via-purple-400/10 to-pink-400/10"
+                animate={{ opacity: [0.15, 0.3, 0.15] }}
+                transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              <form action="mailto:you@example.com" method="post" className="grid gap-4 relative">
                 <input required type="text" name="name" placeholder="Nama" className="w-full rounded-md border border-black/10 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <input required type="email" name="email" placeholder="Email" className="w-full rounded-md border border-black/10 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <textarea required name="message" rows="4" placeholder="Pesan" className="w-full rounded-md border border-black/10 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <button type="submit" className="inline-flex justify-center items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">
+                <motion.button whileHover={{ y: -2 }} whileTap={{ y: 0 }} type="submit" className="inline-flex justify-center items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">
                   Kirim Pesan <ArrowRight className="w-4 h-4" />
-                </button>
+                </motion.button>
               </form>
               <p className="text-xs text-gray-500 mt-3">Ganti alamat email pada tombol kirim agar pesan masuk ke inbox Anda.</p>
             </div>
